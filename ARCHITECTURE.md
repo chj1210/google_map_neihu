@@ -1,167 +1,113 @@
 # 臺北市內湖區智慧綠色運輸轉型策略與模擬平台 - 技術架構設計
 
-## 1. 專案概述
+## 1. 系統架構圖
 
-本文件旨在為「臺北市內湖區智慧綠色運輸轉型策略與模擬平台」專案提供全面的技術架構設計。此平台旨在整合 Google Earth API 的即時數據，用以模擬、分析及評估內湖區在引進自動駕駛巴士、共享運具、主動式運輸設施及智慧交通管理系統等綠色運輸轉型策略後的效果與影響。
-
----
-
-## 2. 技術選型
-
-為了滿足專案在地理空間資料處理、即時數據模擬與高效能視覺化方面的需求，我們建議採用以下技術棧：
-
-### 2.1. 前端應用程式 (Frontend)
-
-*   **框架：React.js**
-    *   **理由：** React 擁有龐大且活躍的開發者社群與豐富的生態系。其元件化的開發模式有助於建立可維護、可擴展的複雜使用者介面。對於地圖應用，React 與主流地圖函式庫（如 Mapbox GL JS, Deck.gl）的整合非常成熟（例如 `react-map-gl`），能夠高效渲染大規模的地理空間數據與即時動畫效果。
-
-*   **地圖視覺化：Deck.gl & Mapbox GL JS**
-    *   **理由：** Deck.gl 是一個基於 WebGL 的大規模數據視覺化函式庫，特別擅長處理 3D 與地理空間數據，能夠流暢地渲染數百萬個數據點，非常適合展示交通流量、車輛軌跡等動態數據。Mapbox GL JS 則提供高效能的向量地圖底圖渲染。兩者可以無縫整合，提供極致的地圖視覺化體驗。
-
-*   **狀態管理：Redux Toolkit**
-    *   **理由：** 用於管理複雜的應用程式狀態，例如使用者設定、模擬參數、篩選條件等，確保數據流的單向與可預測性。
-
-### 2.2. 後端服務 (Backend)
-
-*   **主要框架：Python with Django & Django REST Framework**
-    *   **理由：** Python 在數據科學、機器學習與地理空間分析領域擁有無可比擬的函式庫支援（例如 GeoPandas, Shapely, Scikit-learn）。Django 是一個成熟、功能完備的後端框架，其 "Batteries-included" 的哲學能加速開發進程。Django REST Framework 則能快速建立符合 RESTful 風格的 API。
-
-*   **地理空間處理：GeoPandas & PostGIS**
-    *   **理由：** GeoPandas 讓在 Python 中處理地理空間資料變得像使用 Pandas 一樣簡單。後端將利用它來進行路網分析、空間查詢等預處理。所有地理空間運算最終會由資料庫層的 PostGIS 高效執行。
-
-*   **模擬引擎核心：Celery with Redis**
-    *   **理由：** 交通模擬是計算密集型任務，不應阻塞主 API 服務。Celery 是一個強大的非同步任務佇列，可將模擬運算作為背景任務執行。Redis 則作為高效能的訊息代理 (Message Broker) 與結果後端。
-
-### 2.3. 資料庫 (Database)
-
-*   **主要資料庫：PostgreSQL with PostGIS Extension**
-    *   **理由：** PostgreSQL 是一個穩定、可靠的開源物件關聯式資料庫。其 PostGIS 擴充套件是處理地理空間資料的黃金標準，提供了豐富的地理空間數據類型（如 `GEOMETRY`, `GEOGRAPHY`）和數百個空間分析函式，對於儲存路網、計算路徑、分析地理圍欄等核心功能至關重要。
-
----
-
-## 3. 系統架構設計
-
-本系統採用模組化的微服務導向架構，以確保各功能的高內聚、低耦合，並提升系統的擴展性與可維護性。
-
-### 3.1. 高層架構圖
+本系統採用分層式架構，確保模組化、可擴展性與關注點分離。主要分為前端、後端、數據處理層、數據庫以及外部服務。
 
 ```mermaid
 graph TD
     subgraph "使用者端 (Client-Side)"
-        A[使用者瀏覽器] --> B{前端應用 (React + Deck.gl)};
+        A[使用者瀏覽器]
     end
 
-    subgraph "後端服務 (Server-Side)"
-        B -- HTTP/S (REST API) --> C[API Gateway (Django)];
-        C -- 非同步任務 --> D[模擬引擎 (Celery Workers)];
-        C -- 數據請求 --> E[數據整合模組];
-        C -- 數據存取 --> F[資料庫 (PostgreSQL/PostGIS)];
-        D -- 讀取/寫入 --> F;
-        E -- 數據拉取 --> G[外部數據源];
+    subgraph "前端 (Frontend)"
+        B[React 應用程式]
+        C[地圖與視覺化 (Deck.gl, Mapbox GL JS)]
+        A --> B
+        B --> C
+    end
+
+    subgraph "後端 (Backend - API Gateway)"
+        D[Django REST Framework]
+        B -- HTTPS/REST API --> D
+    end
+
+    subgraph "數據處理層 (Data Processing Layer)"
+        E[數據整合服務 (Python/Pandas)]
+        F[交通模擬引擎 (SUMO/Celery)]
+        D -- 觸發 --> E
+        D -- 啟動模擬任務 --> F
+        E -- 清洗/轉換 --> G
+        F -- 讀取路網/寫入結果 --> G
+    end
+
+    subgraph "數據庫 (Database)"
+        G[PostgreSQL + PostGIS]
+        D -- 讀寫 --> G
     end
 
     subgraph "外部服務 (External Services)"
-        G[外部數據源] --> H[Google Earth/Maps Platform API];
-        G --> I[政府開放資料平台];
+        H[Google Maps Platform API]
+        I[政府開放資料 (TDX)]
+        J[感測器/物聯網數據]
+        E -- 拉取數據 --> H
+        E -- 拉取數據 --> I
+        E -- 拉取數據 --> J
     end
 
-    D -- 使用 --> F;
-    C -- 使用 --> F;
-
     style B fill:#cde4ff,stroke:#333,stroke-width:2px
-    style C fill:#ffcda1,stroke:#333,stroke-width:2px
     style D fill:#ffcda1,stroke:#333,stroke-width:2px
-    style E fill:#ffcda1,stroke:#333,stroke-width:2px
-    style F fill:#d1ffd1,stroke:#333,stroke-width:2px
+    style E fill:#ffe4b5,stroke:#333,stroke-width:2px
+    style F fill:#ffe4b5,stroke:#333,stroke-width:2px
+    style G fill:#d1ffd1,stroke:#333,stroke-width:2px
     style H fill:#f9f9f9,stroke:#333,stroke-width:1px
     style I fill:#f9f9f9,stroke:#333,stroke-width:1px
+    style J fill:#f9f9f9,stroke:#333,stroke-width:1px
 ```
 
-### 3.2. 核心功能模組
+## 2. 技術選型 (Tech Stack)
 
-*   **使用者介面模組 (Frontend Application):**
-    *   基於 React 開發的單頁應用程式 (SPA)。
-    *   負責提供互動式地圖介面、模擬情境設定表單、數據視覺化儀表板及結果報告展示。
+| 層級 | 技術 | 理由 |
+| :--- | :--- | :--- |
+| **前端** | **React.js** | 擁有龐大的社群與豐富的生態系，其元件化模式適合建構複雜且可維護的 UI。與主流地圖函式庫整合良好。 |
+| **後端** | **Python (Django REST Framework)** | Python 在數據科學與地理空間分析領域擁有無可比擬的函式庫支援。Django 提供快速、安全的開發框架。 |
+| **數據庫** | **PostgreSQL with PostGIS** | 處理地理空間資料的黃金標準，提供豐富的空間數據類型與分析函式，是路網分析與空間查詢的核心。 |
+| **數據處理與模擬** | **Pandas, GeoPandas, SUMO** | Pandas/GeoPandas 用於高效的數據處理與空間分析。SUMO (Simulation of Urban MObility) 是一個開源、微觀、多模態的交通模擬套件，非常適合本專案的多情境模擬需求。 |
+| **地圖與視覺化** | **Mapbox GL JS, Deck.gl** | Mapbox 提供高效能的向量地圖底圖，Deck.gl 則擅長大規模地理空間數據的 3D 視覺化，兩者結合能提供極致的地圖體驗。 |
 
-*   **地圖視覺化模組 (Map Visualization):**
-    *   使用 Deck.gl 和 Mapbox GL JS。
-    *   負責渲染基礎地理圖資、交通路網、即時車輛位置、交通流量熱力圖及模擬動畫。
+## 3. 數據流 (Data Flow)
 
-*   **數據整合模組 (Data Integration):**
-    *   後端的一個獨立服務或模組。
-    *   定期從 Google Earth API、政府開放資料平台（如臺北市即時交通資訊）拉取數據，進行清洗、轉換後存入資料庫。
+數據在本系統中的流動路徑如下：
 
-*   **模擬引擎模組 (Simulation Engine):**
-    *   由 Celery Workers 組成。
-    *   接收來自 API Gateway 的模擬任務，根據指定的情境參數（如自動駕駛巴士數量、路線、共享單車投放點），在背景執行交通流量模擬。
+1.  **數據收集 (Ingestion):**
+    *   後端的「數據整合服務」會定期（例如每 5 分鐘）透過排程任務，從多個來源拉取數據：
+        *   **Google Maps Platform API:** 獲取即時交通狀況、路徑規劃時間。
+        *   **政府開放資料平台 (如 TDX API):** 獲取公車動態、路網基本資料、停車場資訊。
+        *   **物聯網 (IoT) 數據:** 接收來自自動駕駛巴士、共享運具或路邊感測器的即時數據。
 
-*   **政策評估模組 (Policy Evaluation):**
-    *   後端的一個分析模組。
-    *   在模擬結束後，此模組會分析模擬結果數據（如平均旅行時間、道路壅塞指數、碳排放量），並生成結構化的評估報告。
+2.  **數據處理與儲存 (Processing & Storage):**
+    *   收集到的原始數據（通常是 JSON 或 CSV 格式）會被進行清洗、轉換和標準化。
+    *   使用 `GeoPandas` 將地址或路線轉換為地理空間格式。
+    *   處理後的數據會被存入 `PostgreSQL/PostGIS` 數據庫中，例如存入 `road_network`、`traffic_flow_history` 等資料表。
 
----
+3.  **模擬與分析 (Simulation & Analysis):**
+    *   使用者在前端設定模擬情境（例如增加 50 輛自動駕駛小巴）。
+    *   前端將情境參數透過 API 傳送至後端。
+    *   後端啟動一個非同步的模擬任務，交由 `Celery` worker 執行。
+    *   `SUMO` 模擬引擎會從 `PostGIS` 讀取最新的路網和交通數據，執行微觀交通模擬。
+    *   模擬完成後，結果（如旅行時間、壅塞指數、碳排放）會被寫回數據庫的 `simulation_result` 資料表。
 
-## 4. 資料模型設計 (初步綱要)
+4.  **數據呈現 (Presentation):**
+    *   前端應用程式向後端 API 請求特定情境的模擬結果或即時交通數據。
+    *   後端從數據庫查詢對應資料，並以 RESTful API 的形式回傳給前端。
+    *   前端使用 `Deck.gl` 將數據視覺化，例如以熱力圖呈現壅塞路段、以動畫軌跡展示車輛流動，並在儀表板上顯示關鍵績效指標 (KPI)。
 
-以下是核心資料實體的初步 Schema 設計，將使用 PostgreSQL/PostGIS 進行儲存。
+## 4. 部署策略 (Deployment Strategy)
 
-```sql
--- 交通路網
-CREATE TABLE road_network (
-    edge_id SERIAL PRIMARY KEY,
-    geometry GEOMETRY(LineString, 4326) NOT NULL, -- WGS84 座標系統
-    road_name VARCHAR(255),
-    road_type VARCHAR(50), -- 例如: 'motorway', 'primary', 'cycleway'
-    max_speed_kmh INTEGER,
-    number_of_lanes INTEGER
-);
+建議採用雲端平台進行部署，以獲得高可用性、彈性擴展與維運便利性。以 **AWS (Amazon Web Services)** 為例：
 
--- 交通流量歷史數據
-CREATE TABLE traffic_flow_history (
-    record_id SERIAL PRIMARY KEY,
-    edge_id INTEGER REFERENCES road_network(edge_id),
-    timestamp TIMESTAMPTZ NOT NULL,
-    flow_count INTEGER, -- 單位時間通過車輛數
-    average_speed_kmh FLOAT
-);
+*   **前端應用 (React):**
+    *   **部署方式:** 將靜態檔案（HTML, CSS, JS）部署至 **Amazon S3**，並搭配 **Amazon CloudFront** 作為 CDN，提供全球低延遲的內容分發。
+    *   **理由:** 成本效益高、高可用性，且能加速全球使用者的載入速度。
 
--- 模擬情境參數
-CREATE TABLE simulation_scenario (
-    scenario_id SERIAL PRIMARY KEY,
-    scenario_name VARCHAR(255) NOT NULL,
-    description TEXT,
-    parameters JSONB, -- 儲存複雜參數, 例如: { "autonomous_buses": 50, "shared_bikes": 200 }
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+*   **後端服務 (Django):**
+    *   **部署方式:** 將後端應用程式容器化 (Docker)，並使用 **Amazon ECS (Elastic Container Service)** 或 **EKS (Elastic Kubernetes Service)** 進行容器編排與管理。
+    *   **理由:** 實現自動擴展、滾動更新與服務健康檢查，確保 API 服務的穩定性。
 
--- 模擬結果
-CREATE TABLE simulation_result (
-    result_id SERIAL PRIMARY KEY,
-    scenario_id INTEGER REFERENCES simulation_scenario(scenario_id),
-    timestamp TIMESTAMPTZ NOT NULL,
-    edge_id INTEGER REFERENCES road_network(edge_id),
-    simulated_flow_count INTEGER,
-    simulated_average_speed_kmh FLOAT,
-    congestion_index FLOAT, -- 壅塞指數
-    emissions_co2_g FLOAT -- 碳排放估算
-);
-```
+*   **數據處理與模擬 (Celery/SUMO):**
+    *   **部署方式:** 同樣容器化後，部署在獨立的 ECS/EKS 服務或專用的 **EC2 (Elastic Compute Cloud)** 執行個體上。可以設定 Auto Scaling Group，根據任務佇列的長度動態增減運算資源。
+    *   **理由:** 將計算密集型任務與主 API 服務分離，避免影響 API 回應時間。可根據負載彈性調整成本與效能。
 
----
-
-## 5. API 整合策略
-
-與 Google Earth API (或更廣泛的 Google Maps Platform) 的整合是本專案的關鍵。
-
-*   **數據獲取：**
-    1.  **即時交通數據：** 使用 Google Maps Platform 的 **Routes API** 或 **Directions API**。雖然它們不直接提供原始的交通圖層，但可以透過查詢特定路段的「含交通狀況的行駛時間」(`duration_in_traffic`) 來反推即-時路況，並將其對應到我們的路網上。
-    2.  **地理編碼與地點資訊：** 使用 **Geocoding API** 和 **Places API** 將地址轉換為座標，或獲取特定地點的詳細資訊。
-    3.  **衛星與街景影像：** 使用 **Map Tiles API** 的衛星圖塊 (`satellite`) 作為地圖底圖，並可整合 **Street View Static API** 提供特定地點的街景影像，以增加情境的真實感。
-
-*   **整合方式：**
-    *   **後端整合：** 「數據整合模組」將作為主要的整合點。它會設定排程任務（例如每 5 分鐘），透過後端伺服器向 Google API 發送請求。這樣做可以保護 API 金鑰，並集中管理 API 的使用配額。
-    *   **數據轉換：** 從 Google API 獲取的數據（通常是 JSON 格式）會被解析、轉換，並與我們系統內部的 `road_network` 進行空間匹配，最後儲存到 `traffic_flow_history` 或直接用於即時模擬。
-
-*   **前端展示：**
-    *   前端應用程式會從我們的後端 API 獲取已經處理好的地理空間數據。
-    *   使用 Deck.gl 的 `GeoJsonLayer` 或 `PathLayer` 來繪製路網，並根據即時速度或壅塞指數數據，動態更新道路的顏色或寬度，從而實現即時交通的視覺化。
+*   **數據庫 (PostgreSQL/PostGIS):**
+    *   **部署方式:** 使用 **Amazon RDS (Relational Database Service)** for PostgreSQL，並啟用 PostGIS 擴充套件。
+    *   **理由:** RDS 簡化了數據庫的管理工作，包含自動備份、災難恢復、安全性更新與效能監控。
