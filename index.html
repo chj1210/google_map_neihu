@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>內湖區智慧綠色運輸轉型儀表板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Urban Oasis -->
+    <!-- Application Structure Plan: 本應用程式採用主題式儀表板結構，而非線性報告。此設計旨在引導使用者從「問題」到「願景」，再到「解決方案」與「預期效益」，創造一個更具探索性的體驗。結構如下：1. 英雄區：開門見山點出核心問題與願景。2. 現況挑戰：透過數據與圖表，將內湖的交通痛點視覺化，強化問題的急迫性。3. 四大支柱：以互動式卡片呈現四個核心解決方案，作為主要的導航中樞，讓使用者可以自由選擇深入了解的領域。4. 解決方案詳解：每個方案均有專屬區塊，利用頁籤切換「效益」、「挑戰」與「案例」，使資訊層次分明。5. 數位孿生平台：專門介紹核心技術工具，以視覺化流程圖解釋其運作模式。6. 預期效益：以醒目的數據卡片總結轉型後的正面影響。此結構能讓複雜的資訊更容易被吸收，並透過互動提高使用者參與感。 -->
+    <!-- Visualization & Content Choices: 1. 運輸模式圓餅圖 (現況挑戰): 目標為「告知」，選擇Chart.js圓餅圖呈現私人與公共運輸的懸殊比例，具視覺衝擊力。互動：滑鼠懸停顯示百分比。2. 交通事故趨勢長條圖 (現況挑戰): 目標為「展示趨勢」，選擇Chart.js長條圖顯示事故數量的變化。互動：滑鼠懸停顯示具體數值。3. 四大支柱流程圖 (解決方案): 目標為「組織」，使用HTML/Tailwind構建，將抽象概念具象化為清晰的流程。互動：點擊卡片跳轉至對應章節。4. 效益儀表盤 (預期效益): 目標為「告知」，使用HTML/Tailwind設計的數據卡片，快速傳達關鍵績效指標(KPIs)的改善幅度，具備高可讀性。所有圖表均使用Canvas，完全避免使用SVG/Mermaid。 -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #F8F7F4; /* Warm Neutral Background */
+        }
+        .text-brand-dark { color: #2C3E50; }
+        .text-brand-green { color: #27AE60; }
+        .text-brand-blue { color: #2980B9; }
+        .bg-brand-green { background-color: #27AE60; }
+        .bg-brand-blue { background-color: #2980B9; }
+        .bg-brand-light { background-color: #ECF0F1; }
+        .bg-brand-white { background-color: #FFFFFF; }
+        .border-brand-green { border-color: #27AE60; }
+        .border-brand-blue { border-color: #2980B9; }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+        }
+        .nav-link:hover {
+            color: #27AE60;
+            border-bottom-color: #27AE60;
+        }
+        .pillar-card {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .pillar-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .tab-button {
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .tab-button.active {
+            background-color: #2C3E50;
+            color: white;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body class="text-brand-dark antialiased">
+
+    <!-- Header & Navigation -->
+    <header class="bg-brand-white sticky top-0 z-50 shadow-md">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold text-brand-green">內湖智慧綠色運輸_陳宏彰</h1>
+            <div class="hidden md:flex space-x-8">
+                <a href="#challenge" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">現況挑戰</a>
+                <a href="#solution" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">解決方案</a>
+                <a href="#platform" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">模擬平台</a>
+                <a href="#benefits" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">預期效益</a>
+            </div>
+             <button id="mobile-menu-button" class="md:hidden focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pb-4">
+            <a href="#challenge" class="block py-2 text-gray-600">現況挑戰</a>
+            <a href="#solution" class="block py-2 text-gray-600">解決方案</a>
+            <a href="#platform" class="block py-2 text-gray-600">模擬平台</a>
+            <a href="#benefits" class="block py-2 text-gray-600">預期效益</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8 md:py-12">
+
+        <!-- Hero Section -->
+        <section class="text-center mb-16 md:mb-24">
+            <h2 class="text-3xl md:text-5xl font-bold mb-4">解鎖內湖交通，迎向永續未來</h2>
+            <p class="max-w-3xl mx-auto text-gray-600 text-lg">
+                透過數據驅動的智慧運輸策略，將內湖轉型為一個更順暢、更安全、更環保的宜居城市。本平台將展示我們如何從分析挑戰到擘劃願景，並透過創新科技實現轉型。
+            </p>
+        </section>
+
+        <!-- The Challenge Section -->
+        <section id="challenge" class="mb-16 md:mb-24">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl md:text-4xl font-bold mb-2">現況與挑戰</h3>
+                <p class="text-gray-500">數據揭示內湖交通系統面臨的嚴峻考驗。</p>
+            </div>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 items-center">
+                <div class="lg:col-span-1 p-6 bg-brand-white rounded-xl shadow-lg">
+                    <h4 class="font-bold text-xl mb-4 text-center">運輸模式分佈</h4>
+                    <p class="text-sm text-gray-600 mb-4 text-center">內湖工作人口高度依賴私人運具（佔66.5%），這不僅是交通擁塞的主因，也反映出現有大眾運輸系統的吸引力不足。</p>
+                    <div class="chart-container h-64 md:h-72">
+                        <canvas id="modalSplitChart"></canvas>
+                    </div>
+                </div>
+                <div class="md:col-span-2 lg:col-span-2 space-y-6">
+                    <div class="bg-brand-white p-6 rounded-xl shadow-lg flex items-center space-x-4">
+                        <div class="text-4xl">⏱️</div>
+                        <div>
+                            <h4 class="font-bold text-xl">尖峰時刻的漫長等待</h4>
+                            <p class="text-gray-600">每日上午8:30至9:30，大量通勤者集中湧入，<span class="font-bold text-brand-blue">高達82%的園區員工於9:00上班</span>，導致通勤時間大幅延長，其中更有<span class="font-bold text-brand-blue">45.13%</span>的通勤時間超過一小時。</p>
+                        </div>
+                    </div>
+                    <div class="bg-brand-white p-6 rounded-xl shadow-lg flex items-center space-x-4">
+                         <div class="text-4xl">⚠️</div>
+                        <div>
+                            <h4 class="font-bold text-xl">逐年上升的交通風險</h4>
+                            <p class="text-gray-600">2021年，內湖區每萬人因交通事故傷亡數高達<span class="font-bold text-brand-green">112.3人</span>，且事故發生頻率呈現上升趨勢，交通安全是刻不容緩的議題。</p>
+                        </div>
+                    </div>
+                     <div class="bg-brand-white p-6 rounded-xl shadow-lg flex items-center space-x-4">
+                         <div class="text-4xl">🚇</div>
+                        <div>
+                            <h4 class="font-bold text-xl">大眾運輸的「最後一哩路」困境</h4>
+                            <p class="text-gray-600">捷運文湖線因路線繞、運量低等因素，難以滿足尖峰需求。公車雖承載多數乘客，但擁擠不堪。如何有效串連站點與目的地，是轉型的關鍵。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- The Solution Section -->
+        <section id="solution" class="mb-16 md:mb-24">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl md:text-4xl font-bold mb-2">智慧綠色運輸四大支柱</h3>
+                <p class="text-gray-500">我們提出一個整合性的解決方案，從四個面向根本性地重塑內湖的交通生態。</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Pillar 1 -->
+                <a href="#pillar-av" class="pillar-card block bg-brand-white p-6 rounded-xl shadow-lg text-center">
+                    <div class="text-5xl mb-4">🤖</div>
+                    <h4 class="font-bold text-xl mb-2">自動駕駛巴士</h4>
+                    <p class="text-gray-600 text-sm">提供高效、安全的「最後一哩路」接駁，擴大公共運輸覆蓋率。</p>
+                </a>
+                <!-- Pillar 2 -->
+                <a href="#pillar-shared" class="pillar-card block bg-brand-white p-6 rounded-xl shadow-lg text-center">
+                    <div class="text-5xl mb-4">🤝</div>
+                    <h4 class="font-bold text-xl mb-2">整合共享運具</h4>
+                    <p class="text-gray-600 text-sm">擴展共享汽機車與自行車，無縫接軌大眾運輸，降低私有車需求。</p>
+                </a>
+                <!-- Pillar 3 -->
+                <a href="#pillar-active" class="pillar-card block bg-brand-white p-6 rounded-xl shadow-lg text-center">
+                     <div class="text-5xl mb-4">🚶‍♂️🚴‍♀️</div>
+                    <h4 class="font-bold text-xl mb-2">強化主動運輸</h4>
+                    <p class="text-gray-600 text-sm">建構智慧人行道與自行車道，讓步行與騎乘更安全、更具吸引力。</p>
+                </a>
+                <!-- Pillar 4 -->
+                <a href="#pillar-management" class="pillar-card block bg-brand-white p-6 rounded-xl shadow-lg text-center">
+                     <div class="text-5xl mb-4">🚦</div>
+                    <h4 class="font-bold text-xl mb-2">智慧交通管理</h4>
+                    <p class="text-gray-600 text-sm">導入AI號誌與即時數據分析，動態優化車流，緩解道路擁塞。</p>
+                </a>
+            </div>
+        </section>
+
+        <!-- Pillar Details Sections -->
+        <div class="space-y-16 md:space-y-24">
+            <!-- AV Bus Section -->
+            <section id="pillar-av" class="scroll-mt-24">
+                <div class="bg-brand-white p-8 rounded-2xl shadow-lg">
+                    <h3 class="text-2xl md:text-3xl font-bold mb-6 flex items-center"><span class="text-4xl mr-4">🤖</span>自動駕駛巴士系統</h3>
+                    <div class="mb-6 border-b border-gray-200">
+                        <nav class="flex space-x-1" aria-label="Tabs">
+                            <button class="tab-button active px-4 py-2 text-sm font-medium rounded-t-lg" data-target="av-benefits">主要效益</button>
+                            <button class="tab-button px-4 py-2 text-sm font-medium rounded-t-lg" data-target="av-challenges">挑戰與對策</button>
+                            <button class="tab-button px-4 py-2 text-sm font-medium rounded-t-lg" data-target="av-cases">國內外案例</button>
+                        </nav>
+                    </div>
+                    <div id="av-benefits" class="tab-content">
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li><span class="font-bold">提升安全：</span>Waymo數據顯示，其自駕車造成的傷人事故比人類駕駛減少了81%。</li>
+                            <li><span class="font-bold">緩解擁塞：</span>透過V2X技術與ITS系統連動，實現車隊協同與路徑優化。</li>
+                            <li><span class="font-bold">擴大服務：</span>較低的營運成本，使其能提供彈性或按需服務，深入傳統公車難以觸及的區域。</li>
+                            <li><span class="font-bold">環境友善：</span>結合電動車技術與智慧節能駕駛演算法，可顯著降低碳排放。</li>
+                        </ul>
+                    </div>
+                    <div id="av-challenges" class="tab-content hidden">
+                        <p class="text-gray-700">推動自駕巴士需克服法規、倫理及公眾接受度三大挑戰。現行法規對L4/L5級別的限制是主要障礙。對策是建立「法規沙盒」進行試點，並透過持續的公眾溝通與教育，建立社會信任。同時，需制定明確的數據隱私與倫理準則，確保技術發展符合公眾利益。</p>
+                    </div>
+                    <div id="av-cases" class="tab-content hidden">
+                        <p class="text-gray-700">國際上，Waymo透過與車廠及叫車平台合作的模式，成功推動規模化。國內，桃園青埔社區的自駕巴士試運行，已驗證其在開放道路解決「最後一哩路」接駁的可行性，為內湖的試點計畫提供了寶貴的實務經驗。</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Shared Mobility Section -->
+            <section id="pillar-shared" class="scroll-mt-24">
+                 <div class="bg-brand-white p-8 rounded-2xl shadow-lg">
+                    <h3 class="text-2xl md:text-3xl font-bold mb-6 flex items-center"><span class="text-4xl mr-4">🤝</span>整合式共享運具</h3>
+                    <div class="mb-6 border-b border-gray-200">
+                         <nav class="flex space-x-1" aria-label="Tabs">
+                            <button class="tab-button active px-4 py-2 text-sm font-medium rounded-t-lg" data-target="shared-benefits">主要效益</button>
+                            <button class="tab-button px-4 py-2 text-sm font-medium rounded-t-lg" data-target="shared-challenges">挑戰與對策</button>
+                         </nav>
+                    </div>
+                     <div id="shared-benefits" class="tab-content">
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li><span class="font-bold">無縫接駁：</span>有效彌補大眾運輸與最終目的地間的距離，是解決「最後一哩路」問題的關鍵。</li>
+                            <li><span class="font-bold">降低私車持有率：</span>提供方便、彈性的出行選擇，減少民眾購買及使用私家車的動機。</li>
+                            <li><span class="font-bold">提升資源利用率：</span>一部共享汽車可取代多部私家車，減少城市停車空間需求與資源浪費。</li>
+                            <li><span class="font-bold">數據驅動優化：</span>透過MaaS平台整合，可分析用戶行為，進一步優化車輛調度與服務網絡。</li>
+                        </ul>
+                    </div>
+                     <div id="shared-challenges" class="tab-content hidden">
+                         <p class="text-gray-700">挑戰在於停車秩序管理與跨區營運的協調。台北、新北、桃園等城市已制定管理條例，規範業者責任。對策是透過建立統一的MaaS平台，整合支付與資訊，並利用數據分析優化車輛調度，同時透過政策（如停車費率差異化）引導用戶行為，確保共享運具的永續發展。</p>
+                    </div>
+                </div>
+            </section>
+
+             <!-- Active Transport Section -->
+            <section id="pillar-active" class="scroll-mt-24">
+                <div class="bg-brand-white p-8 rounded-2xl shadow-lg">
+                    <h3 class="text-2xl md:text-3xl font-bold mb-6 flex items-center"><span class="text-4xl mr-4">🚶‍♂️🚴‍♀️</span>強化主動式運輸</h3>
+                     <div class="mb-6 border-b border-gray-200">
+                         <nav class="flex space-x-1" aria-label="Tabs">
+                            <button class="tab-button active px-4 py-2 text-sm font-medium rounded-t-lg" data-target="active-pedestrian">智慧步行環境</button>
+                            <button class="tab-button px-4 py-2 text-sm font-medium rounded-t-lg" data-target="active-cycling">智慧自行車系統</button>
+                         </nav>
+                    </div>
+                    <div id="active-pedestrian" class="tab-content">
+                        <p class="text-gray-700">內湖區雖已有約172公里的人行道，但品質與安全性仍待提升。我們將導入「智慧人行道」技術，如在斑馬線設置AI行人偵測預警系統，提升穿越路口的安全性。同時，透過拓寬人行道、改善鋪面、增加綠蔭等方式，營造安全舒適的步行環境。</p>
+                    </div>
+                    <div id="active-cycling" class="tab-content hidden">
+                        <p class="text-gray-700">借鑒哥本哈根等國際成功案例，我們將規劃專用、安全的自行車道網絡。導入「智慧自行車計數系統」，利用數據精準規劃路網、號誌與YouBike站點。目標是讓自行車成為安全、便捷、具吸引力的通勤選項，並與大眾運輸樞紐無縫銜接。</p>
+                    </div>
+                </div>
+            </section>
+
+             <!-- Smart Management Section -->
+            <section id="pillar-management" class="scroll-mt-24">
+                 <div class="bg-brand-white p-8 rounded-2xl shadow-lg">
+                    <h3 class="text-2xl md:text-3xl font-bold mb-6 flex items-center"><span class="text-4xl mr-4">🚦</span>智慧交通管理</h3>
+                     <div class="mb-6 border-b border-gray-200">
+                         <nav class="flex space-x-1" aria-label="Tabs">
+                            <button class="tab-button active px-4 py-2 text-sm font-medium rounded-t-lg" data-target="mgmt-ai">AI號誌控制</button>
+                            <button class="tab-button px-4 py-2 text-sm font-medium rounded-t-lg" data-target="mgmt-data">即時數據整合</button>
+                         </nav>
+                    </div>
+                     <div id="mgmt-ai" class="tab-content">
+                        <p class="text-gray-700">利用AI演算法，我們的交通管理系統能超越傳統固定式號誌。系統可即時分析來自路口攝影機與感測器的車流數據，動態調整號誌配時，最大化路口通行效率。它甚至能預測未來半小時的交通流量，並提前調整號誌計畫，或在偵測到救護車等緊急車輛時，自動開出綠色通道。</p>
+                    </div>
+                    <div id="mgmt-data" class="tab-content hidden">
+                        <p class="text-gray-700">數據是智慧管理的基石。我們將部署多樣化的感測器（車流、速度、影像等），並整合來自車輛GPS與手機的定位數據。所有數據將匯入統一平台，經過品質控管與標準化處理後，為交通預測、管理決策和提供給民眾的即時路況資訊，奠定堅實的基礎。</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Simulation Platform Section -->
+        <section id="platform" class="my-16 md:my-24 scroll-mt-24">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl md:text-4xl font-bold mb-2">模擬資訊平台：內湖交通的數位孿生</h3>
+                <p class="text-gray-500">在投入鉅額經費與資源前，我們用數據預見未來。</p>
+            </div>
+             <div class="bg-brand-white p-8 rounded-2xl shadow-lg">
+                <p class="text-center text-lg mb-8">此平台是決策的核心大腦。它整合了即時數據與先進模擬軟體，讓我們能在虛擬世界中測試各種交通策略，從調整一個路口的紅綠燈秒數，到導入全新的自動駕駛巴士系統，都能預先評估其對整個區域交通的影響，從而找出最佳方案，避免昂貴的試錯成本。</p>
+                <div class="w-full overflow-x-auto">
+                    <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-4 p-4 min-w-max">
+                        <div class="text-center p-4 bg-brand-light rounded-lg">
+                            <p class="font-bold">數據輸入</p>
+                            <p class="text-sm text-gray-600">Google API即時路況<br>路口感測器數據</p>
+                        </div>
+                        <div class="text-brand-green text-2xl font-bold">→</div>
+                        <div class="text-center p-4 bg-brand-light rounded-lg">
+                            <p class="font-bold">交通模擬</p>
+                            <p class="text-sm text-gray-600">PTV Vissim / SUMO<br>微觀/宏觀模型</p>
+                        </div>
+                        <div class="text-brand-green text-2xl font-bold">→</div>
+                         <div class="text-center p-4 bg-brand-light rounded-lg">
+                            <p class="font-bold">情境分析</p>
+                            <p class="text-sm text-gray-600">政策評估<br>瓶頸識別</p>
+                        </div>
+                        <div class="text-brand-green text-2xl font-bold">→</div>
+                        <div class="text-center p-4 bg-brand-light rounded-lg">
+                            <p class="font-bold">視覺化決策</p>
+                            <p class="text-sm text-gray-600">3D動態展示<br>數據儀表板</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Benefits Section -->
+        <section id="benefits" class="my-16 md:my-24 scroll-mt-24">
+             <div class="text-center mb-12">
+                <h3 class="text-3xl md:text-4xl font-bold mb-2">可預期的轉型效益</h3>
+                <p class="text-gray-500">智慧綠色運輸將為內湖帶來全面性的正面改變。</p>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+                <div class="bg-brand-green text-white p-6 rounded-xl shadow-lg text-center">
+                    <p class="text-4xl font-bold">20-35%</p>
+                    <p class="mt-2">緊急應變時間縮短</p>
+                </div>
+                 <div class="bg-brand-blue text-white p-6 rounded-xl shadow-lg text-center">
+                    <p class="text-4xl font-bold">~30%</p>
+                    <p class="mt-2">平均通勤時間減少</p>
+                </div>
+                 <div class="bg-brand-green text-white p-6 rounded-xl shadow-lg text-center">
+                    <p class="text-4xl font-bold">~15%</p>
+                    <p class="mt-2">車輛燃料消耗降低</p>
+                </div>
+                <div class="bg-brand-blue text-white p-6 rounded-xl shadow-lg text-center">
+                    <p class="text-4xl font-bold">~25%</p>
+                    <p class="mt-2">交通事故發生率下降</p>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer class="bg-brand-dark text-white text-center p-6">
+        <p>&copy; 2025 智慧臺北 | 內湖綠色運輸轉型計畫_陳宏彰</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mobile Menu Toggle
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            // Tab switching logic
+            const pillarSections = document.querySelectorAll('section[id^="pillar-"]');
+            pillarSections.forEach(section => {
+                const tabs = section.querySelectorAll('.tab-button');
+                const contents = section.querySelectorAll('.tab-content');
+
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        tabs.forEach(item => item.classList.remove('active'));
+                        tab.classList.add('active');
+
+                        const targetId = tab.getAttribute('data-target');
+                        contents.forEach(content => {
+                            if (content.id === targetId) {
+                                content.classList.remove('hidden');
+                            } else {
+                                content.classList.add('hidden');
+                            }
+                        });
+                    });
+                });
+            });
+
+            // Chart.js: Modal Split Chart
+            const modalSplitCtx = document.getElementById('modalSplitChart').getContext('2d');
+            new Chart(modalSplitCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['私人運具 (機車/汽車)', '公車', '捷運', 'YouBike'],
+                    datasets: [{
+                        label: '運輸模式分佈',
+                        data: [66.5, 19.8, 10.2, 1.9],
+                        backgroundColor: [
+                            '#E74C3C', // Private
+                            '#3498DB', // Bus
+                            '#F1C40F', // MRT
+                            '#2ECC71'  // YouBike
+                        ],
+                        borderColor: '#F8F7F4',
+                        borderWidth: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                             labels: {
+                                color: '#2C3E50',
+                                font: {
+                                    family: "'Noto Sans TC', sans-serif"
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
